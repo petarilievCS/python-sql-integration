@@ -25,7 +25,7 @@ import helpers
 USAGE = f"Usage: {sys.argv[0]}"
 
 ### Queries
-pokemon_query = '''
+query = '''
     SELECT 
         g.region,
         g.name, 
@@ -44,7 +44,7 @@ def main(db):
     
     # TODO: your code here
     cur = db.cursor()
-    cur.execute(pokemon_query)
+    cur.execute(query)
     result = cur.fetchall()
 
     print('Region Game              #Pokemon #Locations')

@@ -92,3 +92,34 @@ CREATE OR REPLACE FUNCTION Super_Effective(_Type Text)
 -- eg if my_supper_clever_function() depends on my_other_function() then my_other_function() must be defined first
 -- Your Views/Functions Below Here
 --
+
+SELECT g.name, l.name, e.rarity, e.levels
+FROM Pokemon p
+JOIN Encounters e ON (e.occurs_with = p.id)
+JOIN Locations l ON (e.occurs_at = l.id)
+JOIN Games g ON (l.appears_in = g.id)
+WHERE p.name = 'Pikachu'
+ORDER BY g.region, g.name, l.name, e.rarity, e.levels;
+
+--- 
+--- Given an encounter id
+--- Returns a list of encounter requirements
+---
+CREATE OR REPLACE FUNCTION Get_Requirements(encounter_id INT) 
+RETURNS TEXT AS $$
+DECLARE
+    requirements TEXT := '';
+    requirement TEXT;
+BEGIN
+    FOR requirement IN 
+        SELECT r.assertion
+        FROM Encounter_Requirements er
+        JOIN Requirements r ON (er.requirement = r.id)
+        WHERE er.encounter = encounter_id
+    LOOP
+        requirements := requirements || requirement || ', ';
+    END LOOP;
+    requirements := LEFT(requirements, LENGTH(requirements) - 2);
+    RETURN requirements;
+END; 
+$$ LANGUAGE plpgsql;

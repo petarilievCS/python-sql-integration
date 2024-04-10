@@ -24,6 +24,15 @@ import helpers
 ### Constants
 USAGE = f"Usage: {sys.argv[0]} <pokemon_name>"
 
+query = '''
+    SELECT g.name, l.name, e.rarity, e.levels, Get_Requirements(e.id)
+    FROM Pokemon p
+    JOIN Encounters e ON (e.occurs_with = p.id)
+    JOIN Locations l ON (e.occurs_at = l.id)
+    JOIN Games g ON (l.appears_in = g.id)
+    WHERE p.name = %s
+    ORDER BY g.region, g.name, l.name, e.rarity, e.levels;
+'''
 
 def main(db):
     if len(sys.argv) != 2:
@@ -33,7 +42,19 @@ def main(db):
     pokemon_name = sys.argv[1]
 
     # TODO: your code here
+    cur = db.cursor()
+    cur.execute(query, [helpers.clean(pokemon_name)])
+    result = cur.fetchall()
+    
+    print("Game              Location                   Rarity   MinLevel MaxLevel Requirements")
+    for tuple in result:
+        game, location, rarity, levels, requirements = tuple[0], tuple[1], tuple[2], tuple[3], tuple[4]
 
+        rarity_str = helpers.get_rarity_string(rarity)
+        levels = levels[1:-1].split(',')
+        min_level = levels[0]
+        max_level = levels[1]
+        print(f"{game:<17} {location:<26} {rarity_str:<8} {min_level:<8} {max_level:<12} {requirements}")
 
 if __name__ == '__main__':
     exit_code = 0
