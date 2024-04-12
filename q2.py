@@ -25,13 +25,16 @@ import helpers
 USAGE = f"Usage: {sys.argv[0]} <pokemon_name>"
 
 query = '''
-    SELECT g.name, l.name, e.rarity, e.levels, Get_Requirements(e.id)
-    FROM Pokemon p
-    JOIN Encounters e ON (e.occurs_with = p.id)
-    JOIN Locations l ON (e.occurs_at = l.id)
-    JOIN Games g ON (l.appears_in = g.id)
-    WHERE p.name = %s
-    ORDER BY g.region, g.name, l.name, e.rarity, e.levels;
+    SELECT DISTINCT game, location, rarity, minLevel, maxLevel, requirements, region
+    FROM Q2
+    WHERE pokemon = %s
+    ORDER BY region, game, location, rarity, minLevel, maxLevel, requirements
+'''
+
+name_query = '''
+    SELECT * 
+    FROM Pokemon
+    WHERE name = %s;
 '''
 
 def main(db):
@@ -43,18 +46,48 @@ def main(db):
 
     # TODO: your code here
     cur = db.cursor()
+
+    # Check if Pokemon exists
+    cur.execute(name_query, [pokemon_name])
+    result = cur.fetchall()
+    if len(result) == 0:
+        print(f"Pokemon \"{pokemon_name}\" does not exist")
+        return 
+
     cur.execute(query, [helpers.clean(pokemon_name)])
     result = cur.fetchall()
     
-    print("Game              Location                   Rarity   MinLevel MaxLevel Requirements")
-    for tuple in result:
-        game, location, rarity, levels, requirements = tuple[0], tuple[1], tuple[2], tuple[3], tuple[4]
+    # Check if encounters exist
+    if len(result) == 0:
+        print(f"Pokemon \"{pokemon_name}\" is not encounterable in any game")
+        return
+    
+    # Find longest entry for each attribute
+    len1, len2, len3, len6 = find_attribute_lengths(result)
+    len4, len5 = 8, 8
 
-        rarity_str = helpers.get_rarity_string(rarity)
-        levels = levels[1:-1].split(',')
-        min_level = levels[0]
-        max_level = levels[1]
-        print(f"{game:<17} {location:<26} {rarity_str:<8} {min_level:<8} {max_level:<12} {requirements}")
+    # Check if additional whitespace is needed
+    diff1 = len1 - len("Game")
+    diff2 = len2 - len("Location")
+    diff3 = len3 - len("Rarity")
+    diff6 = len6 - len("Requirements")
+    print("Game " + diff1 * " " + "Location " + diff2 * " " + "Rarity " + diff3 * " " + "MinLevel MaxLevel " + "Requirements")
+
+    for tuple in result:
+        game, location, rarity, min_level, max_level, requirements = tuple[0], tuple[1], tuple[2], tuple[3], tuple[4], tuple[5]
+        print(f"{game:<{len1}} {location:<{len2}} {rarity:<{len3}} {min_level:<8} {max_level:<8} {requirements}")
+
+def find_attribute_lengths(result):
+    len1, len2, len3, len6 = len('Game'), len('Location'), len('Rarity'), len('Requirements')
+    for tuple in result:
+        game, location, rarity, requirements = tuple[0], tuple[1], tuple[2], tuple[5]
+
+        if len(game) > len1: len1 = len(game)
+        if len(location) > len2: len2 = len(location)
+        if len(rarity) > len3: len3 = len(rarity)
+        if len(requirements) > len6: len6 = len(requirements)
+    
+    return len1, len2, len3, len6
 
 if __name__ == '__main__':
     exit_code = 0

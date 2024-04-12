@@ -110,16 +110,60 @@ RETURNS TEXT AS $$
 DECLARE
     requirements TEXT := '';
     requirement TEXT;
+    inverted BOOLEAN;
+    tuple RECORD;
 BEGIN
-    FOR requirement IN 
-        SELECT r.assertion
+    FOR tuple IN 
+        SELECT r.assertion, er.inverted
         FROM Encounter_Requirements er
         JOIN Requirements r ON (er.requirement = r.id)
         WHERE er.encounter = encounter_id
+        ORDER BY r.assertion
     LOOP
+        requirement := tuple.assertion;
+        inverted := tuple.inverted;
+
+        IF inverted THEN
+            requirement := 'Not ' || requirement; 
+        END IF;
         requirements := requirements || requirement || ', ';
+
     END LOOP;
     requirements := LEFT(requirements, LENGTH(requirements) - 2);
     RETURN requirements;
 END; 
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE PLpgSQL;
+
+---
+--- Given rarirty as an integer, returns the corressponding string
+---
+CREATE OR REPLACE FUNCTION Get_Rarity_String(rarity INT) 
+RETURNS TEXT AS $$ 
+DECLARE
+    result TEXT := '';
+BEGIN
+    IF rarity >= 21 THEN
+        result := 'Common';
+    ELSIF rarity >= 6 AND rarity <= 20 THEN
+        result := 'Uncommon';
+    ELSIF rarity >= 1 AND rarity <= 5 THEN
+        result := 'Rare';
+    ELSE 
+        result := 'Limited';
+    END IF;
+
+    RETURN result;
+END;
+$$ LANGUAGE PLpgSQL;
+
+--- 
+--- View with information for every pokemon encounter (game, location, rarity, levels, requirements)
+---
+CREATE OR REPLACE VIEW Q2(Region, Pokemon, Game, Location, Rarity, MinLevel, MaxLevel, Requirements) AS
+    SELECT g.region, p.name, g.name, l.name, Get_Rarity_String(e.rarity), min(e.levels), max(e.levels), Get_Requirements(e.id)
+    FROM Pokemon p
+    JOIN Encounters e ON (e.occurs_with = p.id)
+    JOIN Locations l ON (e.occurs_at = l.id)
+    JOIN Games g ON (l.appears_in = g.id)
+    ORDER BY g.region;
+
