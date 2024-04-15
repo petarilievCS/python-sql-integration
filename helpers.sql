@@ -167,3 +167,91 @@ CREATE OR REPLACE VIEW Q2(Region, Pokemon, Game, Location, Rarity, MinLevel, Max
     JOIN Games g ON (l.appears_in = g.id)
     ORDER BY g.region;
 
+
+--- 
+--- Returns the effectivness of a move given the attacking and defending pokemons
+---
+CREATE OR REPLACE FUNCTION Get_Move_Effectivness(move_id INT, attacker_name TEXT, defender_name TEXT) 
+RETURNS INT AS $$
+DECLARE
+    result NUMERIC;
+    move RECORD;
+    attacker RECORD;
+    defender RECORD;
+    multiplier NUMERIC;
+BEGIN
+    SELECT * FROM Moves WHERE id = move_id INTO move;
+    result := move.power; -- Initial value
+
+    -- Adjust for attacker type
+    SELECT * FROM Pokemon WHERE name = attacker_name INTO attacker;
+    IF attacker.first_type = move.of_type OR attacker.second_type = move.of_type THEN
+        result := result * 1.5; 
+    END IF;
+    result := FLOOR(result);
+
+    -- Adjust for defender type
+    SELECT * FROM Pokemon WHERE name = defender_name INTO defender;
+    SELECT te.multiplier FROM Type_Effectiveness te WHERE attacking = move.of_type AND defending = defender.first_type INTO multiplier;
+    IF multiplier IS NOT NULL THEN
+        multiplier := multiplier / 100;
+        result := result * multiplier;
+    END IF;
+
+    SELECT te.multiplier FROM Type_Effectiveness te WHERE attacking = move.of_type AND defending = defender.second_type INTO multiplier;
+    IF multiplier IS NOT NULL THEN
+        multiplier := multiplier / 100;
+        result := result * multiplier;
+    END IF;
+    result := FLOOR(result);
+
+    RETURN result;
+END;
+$$ LANGUAGE PLpgSQL;
+
+---
+--- Returns requirements 
+--- given move id, pokemon name and game id 
+---
+CREATE OR REPLACE FUNCTION Get_Move_Requirements(move INT, pokemon POKEMON_ID, game INT) 
+RETURNS TEXT AS $$
+DECLARE
+    result TEXT := '';
+    requirement TEXT := '';
+    requirement_id INT;
+BEGIN
+    FOR requirement_id IN (SELECT learnt_when FROM Learnable_Moves WHERE learnt_by = pokemon AND learnt_in = game AND learns = move) LOOP
+        SELECT assertion FROM Requirements WHERE id = requirement_id INTO requirement;
+        result := result || requirement || ' OR ';
+    END LOOP;
+
+    -- Remove last OR
+    result := LEFT(result, LENGTH(result) - 4);
+    RETURN result;
+END;
+$$ LANGUAGE PLpgSQL;
+
+
+---
+--- Returns a table with learnable moves, their effectivness and requirements 
+--- given a game name, attacking pokemon name and defending pokemon name
+---
+CREATE OR REPLACE FUNCTION Get_Game_Moves(game_name TEXT, pokemon_name TEXT, defender_name TEXT)
+RETURNS TABLE(id INT, name TEXT, of_type INT, effectivness INT, requirements TEXT) AS $$
+DECLARE
+BEGIN
+
+    RETURN QUERY
+    SELECT DISTINCT 
+        m.id,
+        m.name, 
+        m.of_type, 
+        Get_Move_Effectivness(m.id, pokemon_name, defender_name),
+        Get_Move_Requirements(m.id, p.id, g.id)
+    FROM Moves m
+    JOIN Learnable_Moves lm ON (m.id = lm.learns)
+    JOIN Games g ON (g.id = lm.learnt_in)
+    JOIN Pokemon p ON (p.id = lm.learnt_by)
+    WHERE g.name = game_name AND p.name = pokemon_name AND m.power IS NOT NULL;
+END;
+$$ LANGUAGE PLpgSQL;
