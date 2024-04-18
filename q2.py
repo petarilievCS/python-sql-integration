@@ -7,8 +7,8 @@ COMP3311
 Assignment 2
 Pokemon Database
 
-Written by: <YOUR NAME HERE> <YOUR STUDENT ID HERE>
-Written on: <DATE HERE>
+Written by: Petar Iliev z5567169
+Written on: 18/4/2024
 
 File Name: Q2
 
@@ -28,13 +28,7 @@ query = '''
     SELECT DISTINCT game, location, rarity, minLevel, maxLevel, requirements, region
     FROM Q2
     WHERE pokemon = %s
-    ORDER BY region, game, location, rarity, minLevel, maxLevel, requirements
-'''
-
-name_query = '''
-    SELECT * 
-    FROM Pokemon
-    WHERE name = %s;
+    ORDER BY region, game, location, rarity, minLevel, maxLevel, requirements;
 '''
 
 def main(db):
@@ -43,14 +37,9 @@ def main(db):
         return 1
 
     pokemon_name = sys.argv[1]
-
-    # TODO: your code here
     cur = db.cursor()
 
-    # Check if Pokemon exists
-    cur.execute(name_query, [pokemon_name])
-    result = cur.fetchall()
-    if len(result) == 0:
+    if not helpers.pokemon_exists(pokemon_name, cur):
         print(f"Pokemon \"{pokemon_name}\" does not exist")
         return 
 
@@ -64,13 +53,11 @@ def main(db):
     
     # Find longest entry for each attribute
     len1, len2, len3, len6 = find_attribute_lengths(result)
-    len4, len5 = 8, 8
 
     # Check if additional whitespace is needed
     diff1 = len1 - len("Game")
     diff2 = len2 - len("Location")
     diff3 = len3 - len("Rarity")
-    diff6 = len6 - len("Requirements")
     print("Game " + diff1 * " " + "Location " + diff2 * " " + "Rarity " + diff3 * " " + "MinLevel MaxLevel " + "Requirements")
 
     for tuple in result:

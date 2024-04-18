@@ -42,7 +42,6 @@ def main(db):
         print(USAGE)
         return 1
     
-    # TODO: your code here
     cur = db.cursor()
     cur.execute(query)
     result = cur.fetchall()

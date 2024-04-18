@@ -31,12 +31,6 @@ query = '''
     ORDER BY effectivness DESC, name;
 '''
 
-pokemon_query = '''
-    SELECT COUNT(*)
-    FROM Pokemon
-    WHERE name = %s;
-'''
-
 game_query = '''
     SELECT COUNT(*)
     FROM Pokedex px
@@ -54,14 +48,11 @@ def main(db):
     attacking_pokemon_name = sys.argv[2]
     defending_pokemon_name = sys.argv[3]
 
-    # TODO: your code here
     cur = db.cursor()
 
     # Check if Pokemons exist
     for pokemon in [attacking_pokemon_name, defending_pokemon_name]:
-        cur.execute(pokemon_query, [pokemon])
-        result = cur.fetchone()
-        if result[0] == 0:
+        if not helpers.pokemon_exists(pokemon, cur):
             print(f"Pokemon \"{pokemon}\" does not exist")
             return
     

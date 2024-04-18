@@ -129,6 +129,7 @@ BEGIN
         requirements := requirements || requirement || ', ';
 
     END LOOP;
+    -- remove last comma
     requirements := LEFT(requirements, LENGTH(requirements) - 2);
     RETURN requirements;
 END; 
@@ -220,7 +221,9 @@ DECLARE
     requirement TEXT := '';
     requirement_id INT;
 BEGIN
-    FOR requirement_id IN (SELECT learnt_when FROM Learnable_Moves WHERE learnt_by = pokemon AND learnt_in = game AND learns = move) LOOP
+    FOR requirement_id IN 
+        (SELECT learnt_when FROM Learnable_Moves WHERE learnt_by = pokemon AND learnt_in = game AND learns = move) 
+    LOOP
         SELECT assertion FROM Requirements WHERE id = requirement_id INTO requirement;
         result := result || requirement || ' OR ';
     END LOOP;
@@ -240,7 +243,6 @@ CREATE OR REPLACE FUNCTION Get_Game_Moves(game_name TEXT, pokemon_name TEXT, def
 RETURNS TABLE(id INT, name TEXT, of_type INT, effectivness INT, requirements TEXT) AS $$
 DECLARE
 BEGIN
-
     RETURN QUERY
     SELECT DISTINCT 
         m.id,
